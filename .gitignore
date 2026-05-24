@@ -4,7 +4,10 @@ __pycache__/
 venv/
 *.pt
 *.pth
-outputs/
+outputs/*.pt
+outputs/*.pth
+outputs/nerf/
+outputs/tensorf/
 data/
 .DS_Store
 *.egg-info/

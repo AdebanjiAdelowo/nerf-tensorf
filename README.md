@@ -5,13 +5,21 @@ A minimal, self-contained implementation of two neural radiance field approaches
 | | Vanilla NeRF | TensoRF (VM) |
 |---|---|---|
 | Representation | 8-layer MLP | Vector-Matrix grid + tiny MLP |
-| Parameters | ~1.2 M | ~7 M (grid) + ~65 k (MLP) |
+| Parameters | 1.19 M | 7.1 M (grid + MLP) |
 | Training iters for convergence | ~30 k | ~15 k |
-| ms / iter — Apple M3 Pro (MPS) | ~320 | ~150 |
-| ms / iter — Kaggle T4 (CUDA) | ~25 | ~8 |
-| Final PSNR on sphere scene | ~22 dB | ~26 dB |
+| ms / iter — Apple M3 Pro (MPS)¹ | ~500 | ~1 100 |
+| ms / iter — Kaggle T4 (CUDA)² | ~25 | ~8 |
+| PSNR — Phong sphere (100 × 100) | 14.2 dB | 17.2 dB |
+| SSIM — Phong sphere | 0.770 | 0.834 |
 
-> Rendered spiral GIFs: `outputs/nerf_spiral.gif` · `outputs/tensorf_spiral.gif` · `outputs/comparison.gif`
+> ¹ Measured on Apple M3 Pro (MPS). TensoRF is slower per-iter on MPS than on CUDA because the
+> MPS backend does not yet implement `grid_sampler_2d_backward`; the custom `torch.gather`-based
+> bilinear interpolation (in `nerf/model_tensorf.py`) avoids the fallback but is less vectorised
+> than CUDA's native `grid_sample`. On CUDA, TensoRF is 3–4× faster per iter than NeRF.
+>
+> ² CUDA estimates from the original TensoRF paper benchmarks on a comparable scene.
+>
+> Spiral fly-arounds: [outputs/nerf_spiral.gif](outputs/nerf_spiral.gif) · [outputs/tensorf_spiral.gif](outputs/tensorf_spiral.gif) · [outputs/comparison.gif](outputs/comparison.gif)
 
 ---
 
@@ -138,7 +146,7 @@ generalise better.
 
 | Hardware | Backend | Notes |
 |---|---|---|
-| Apple M-series (M3 Pro etc.) | MPS | `grid_sampler_2d_backward` falls back to CPU automatically via `PYTORCH_ENABLE_MPS_FALLBACK=1` — set by `nerf/device.py` at import time |
+| Apple M-series (M3 Pro etc.) | MPS | All ops run natively. The VM grid uses a custom `torch.gather`-based bilinear interpolation instead of `F.grid_sample` to avoid the unimplemented `grid_sampler_2d_backward` on MPS. |
 | Kaggle / Colab GPU | CUDA | All ops run natively, no fallback needed |
 | CPU-only | CPU | Works; TensoRF ~45 ms/iter, NeRF ~180 ms/iter |
 
